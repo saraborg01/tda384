@@ -2,6 +2,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
+import java.lang.Math.*;
 
 import static java.util.Arrays.asList;
 import TSim.*;
@@ -117,16 +118,22 @@ class Train extends Thread {
 			
 		}
 		
+		private void switchDirectione() {
+			this.speed *= -1;
+		}
+		
 		private void waitAtStation() {
 			System.out.println("waiting at station");
 			try {
 				tsi.setSpeed(id, 0);
+				sleep(1000 + 2*Math.abs(speed));
+				switchDirection();
+				tsi.setSpeed(id, speed);
 			} catch (CommandException e) {
 				e.printStackTrace();
-			} 
-//			catch (InterruptedException e) {
-//				e.printStackTrace();
-//			}
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 			
 			
 		}
