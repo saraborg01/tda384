@@ -58,7 +58,7 @@ public class Lab1 {
 	    sensors.put(Sensors.SOUTH_W, asList(1,11));
 	    sensors.put(Sensors.SOUTH_S, asList(3,12));
 	    
-	    sensors.put(Sensors.NORTH_STATION_N, asList(16,0));
+	    sensors.put(Sensors.NORTH_STATION_N, asList(16,4));
 	    sensors.put(Sensors.NORTH_STATION_S, asList(16,5));
 	    sensors.put(Sensors.SOUTH_STATION_N, asList(14,11));
 	    sensors.put(Sensors.SOUTH_STATION_S, asList(14,14));
@@ -109,40 +109,24 @@ class Train extends Thread {
 		}
 		
 	    private void setClearance(Semaphores semName) {
-	    	// TODO Auto-generated method stub
 	    	Semaphore sem = semaphores.get(semName);
 	    	if (sem.availablePermits() == 0 && (semName.equals(lastSemaphore) || semName.equals(Semaphores.CROSSING))) {
 	    		sem.release();
 				lastSemaphore = currentSemaphore;
 			}
-	    	
-	    	
-//	    	System.out.println("setting clearance");
-		
 	    }	
 	    
 	    private void claim(Semaphores semName) throws InterruptedException{
 	    	Semaphore sem = semaphores.get(semName);
-	    	if (id == 2) {
-	    		System.out.println("train two will claim");
-	    	}
-	    	sem.acquire(); // FASTNAR HÄR
-	    	if (id == 2) {
-	    		System.out.println("train two has claimed");
-	    	}
-	    	
-	    	
+	    	sem.acquire();
+
 	    	if (semName != Semaphores.CROSSING) {
 				lastSemaphore = currentSemaphore;
 				currentSemaphore = semName;
 			}
-	    	if (id == 2) {
-	    		System.out.println("train two leaving claim");
-	    	}
 	    }
 
 		private void waitForClearance(Semaphores semName) throws CommandException, InterruptedException{
-			// TODO Auto-generated method stub
 		
 			tsi.setSpeed(id, 0);
 			claim(semName);
@@ -152,14 +136,11 @@ class Train extends Thread {
 		}
 		
 		private void waitForClearance(Semaphores semName, Switches s, int sDir) throws CommandException, InterruptedException{
-			// TODO Auto-generated method stub
-		
 			tsi.setSpeed(id, 0);
 			claim(semName);
 			changeSwitch(s, sDir);
 			
 			tsi.setSpeed(id, speed);
-			
 		}
 		
 		private void switchDirection() {
@@ -183,10 +164,8 @@ class Train extends Thread {
 		}
 		
 		private boolean semaphoreIsAvailable(Semaphores semName) {
-//			System.out.println("checking availability" + sem);
 			Semaphore sem = semaphores.get(semName);
-			boolean notBusy = sem.tryAcquire();
-			return notBusy;
+			return sem.availablePermits() == 1;
 		}
 		
 		private void changeSwitch(Switches s, int direction) throws CommandException{
@@ -247,7 +226,7 @@ class Train extends Thread {
 							if (!semaphoreIsAvailable(Semaphores.EAST_TRACK)) {
 								waitForClearance(Semaphores.EAST_TRACK); // but with switch ??
 							} else {
-								changeSwitch(Switches.EAST, tsi.SWITCH_RIGHT); // may not be needed
+								// changeSwitch(Switches.EAST, tsi.SWITCH_RIGHT); // may not be needed
 								claim(Semaphores.EAST_TRACK);
 								// maybe update speed
 							}
@@ -271,15 +250,11 @@ class Train extends Thread {
 						break;
 					case EAST_E:
 						if (lastSensor == Sensors.MID_E) {
-							System.out.println("HI THERE");
 							if (!semaphoreIsAvailable(Semaphores.N_STATION)) {
-								System.out.println(" north station is not available!!!!!!!!!!!");
 								changeSwitch(Switches.EAST, tsi.SWITCH_LEFT);
 								// maybe update speed
 							}
 							else {
-								// ka framt
-								// claim north station
 								claim(Semaphores.N_STATION);
 								// maybe update switch
 							}
@@ -380,7 +355,6 @@ class Train extends Thread {
 								claim(Semaphores.S_STATION);
 							}
 						} else if (lastSensor == Sensors.SOUTH_E){
-							System.out.println("train 2 clearing south station");
 							setClearance(Semaphores.S_STATION);
 						} else {
 						    changeSwitch(Switches.SOUTH, tsi.SWITCH_LEFT);
@@ -391,7 +365,6 @@ class Train extends Thread {
 							if (!semaphoreIsAvailable(Semaphores.WEST_TRACK)) {
 								waitForClearance(Semaphores.WEST_TRACK);
 							} else {
-								System.out.println("train 2 claiming west");
 								claim(Semaphores.WEST_TRACK);
 							}
 						} else {
@@ -415,25 +388,22 @@ class Train extends Thread {
 					// Stations
 					case NORTH_STATION_N:
 						if (lastSensor == Sensors.CROSSING_W) {
-							System.out.println("north station n");
+							System.out.println("WAIT north station n");
 							waitAtStation();
 						}
 						break;
 					case SOUTH_STATION_N:
 						if (lastSensor == Sensors.SOUTH_E) {
-							System.out.println("south station n");
 							waitAtStation();
 						}
 						break;
 					case NORTH_STATION_S:
 						if (lastSensor == Sensors.CROSSING_N) {
-							System.out.println("north station s");
 							waitAtStation();
 						}
 						break;
 					case SOUTH_STATION_S:
 						if (lastSensor == Sensors.SOUTH_S) {
-							System.out.println("south station s");
 							waitAtStation();
 						}
 						break;
@@ -453,9 +423,6 @@ class Train extends Thread {
 				tsi.setSpeed(id,speed);
 				
 				while(true) {
-					if (id == 2) {
-						System.out.println("Train 2 in loop");
-					}
 					SensorEvent event = tsi.getSensor(id);
 					handleSensor(event);
 				}
