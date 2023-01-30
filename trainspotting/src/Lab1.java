@@ -47,10 +47,10 @@ public class Lab1 {
 	    sensors.put(Sensors.EAST_S, asList(15,8));
 	    
 	    sensors.put(Sensors.MID_E, asList(17,9));
-	    sensors.put(Sensors.MID_W, asList(13,9));
+	    sensors.put(Sensors.MID_W, asList(12,9));
 	    sensors.put(Sensors.MID_S, asList(13,10));
 	    
-	    sensors.put(Sensors.WEST_E, asList(6,9));
+	    sensors.put(Sensors.WEST_E, asList(7,9));
 	    sensors.put(Sensors.WEST_W, asList(1,9));
 	    sensors.put(Sensors.WEST_S, asList(6,10));
 	    
@@ -96,7 +96,7 @@ class Train extends Thread {
 		private TSimInterface tsi;
 		private Sensors lastSensor;
 		
-		private static int MAX_SPEED = 15;
+		private static int MAX_SPEED = 20;
 		
 		public Train(int id, int speed, TSimInterface tsi, Sensors lastSensor) {
 			this.id = id;
@@ -421,8 +421,6 @@ class Train extends Thread {
 						break;
 				}
 				
-				// System.out.println("new last sensor " + name);
-				
 				lastSensor = name;
 			}
 	    }
@@ -447,8 +445,6 @@ class Train extends Thread {
 				e.printStackTrace();
 				System.exit(1);
 			}
-			
-			// TODO Auto-generated method stub
 			
 		}
 		
