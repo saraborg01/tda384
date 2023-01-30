@@ -28,44 +28,43 @@ public class Lab1 {
 		WEST_TRACK, MID_TRACK, S_STATION
 	}
 	
-	Map<Sensors, List<Integer>> sensors   = new HashMap<>();
 	Map<Switches, List<Integer>> switches = new HashMap<>();
 	Map<Semaphores, Semaphore> semaphores = new HashMap<>();
-	Map<List<Integer>, Sensors> sensorPos = new HashMap<>();
+	Map<List<Integer>, Sensors> sensors = new HashMap<>();
 	
 
     public Lab1(int speed1, int speed2) {
 	    TSimInterface tsi = TSimInterface.getInstance();
 	    
-	    sensors.put(Sensors.CROSSING_W, asList(6,6));
-	    sensors.put(Sensors.CROSSING_N, asList(8,5));
-	    sensors.put(Sensors.CROSSING_E, asList(10,7));
-	    sensors.put(Sensors.CROSSING_S, asList(10,8));
+	    sensors.put(asList(6,6), Sensors.CROSSING_W);
+	    sensors.put(asList(8,5), Sensors.CROSSING_N);
+	    sensors.put(asList(10,7), Sensors.CROSSING_E);
+	    sensors.put(asList(10,8), Sensors.CROSSING_S);
 	    
-	    sensors.put(Sensors.EAST_E, asList(19,8));
-	    sensors.put(Sensors.EAST_W, asList(15,7));
-	    sensors.put(Sensors.EAST_S, asList(15,8));
+	    sensors.put(asList(19,8), Sensors.EAST_E);
+	    sensors.put(asList(15,7), Sensors.EAST_W);
+	    sensors.put(asList(15,8), Sensors.EAST_S);
 	    
-	    sensors.put(Sensors.MID_E, asList(17,9));
-	    sensors.put(Sensors.MID_W, asList(12,9));
-	    sensors.put(Sensors.MID_S, asList(13,10));
+	    sensors.put(asList(17,9), Sensors.MID_E);
+	    sensors.put(asList(12,9), Sensors.MID_W);
+	    sensors.put(asList(13,10), Sensors.MID_S);
 	    
-	    sensors.put(Sensors.WEST_E, asList(7,9));
-	    sensors.put(Sensors.WEST_W, asList(1,9));
-	    sensors.put(Sensors.WEST_S, asList(6,10));
+	    sensors.put(asList(7,9), Sensors.WEST_E);
+	    sensors.put(asList(1,9), Sensors.WEST_W);
+	    sensors.put(asList(6,10), Sensors.WEST_S);
 	    
-	    sensors.put(Sensors.SOUTH_E, asList(5,11));
-	    sensors.put(Sensors.SOUTH_W, asList(1,10));
-	    sensors.put(Sensors.SOUTH_S, asList(4,13));
+	    sensors.put(asList(5,11), Sensors.SOUTH_E);
+	    sensors.put(asList(1,10), Sensors.SOUTH_W);
+	    sensors.put(asList(4,13), Sensors.SOUTH_S);
 	    
-	    sensors.put(Sensors.NORTH_STATION_N, asList(15,3));
-	    sensors.put(Sensors.NORTH_STATION_S, asList(15,5));
-	    sensors.put(Sensors.SOUTH_STATION_N, asList(15,11));
-	    sensors.put(Sensors.SOUTH_STATION_S, asList(15,13));
+	    sensors.put(asList(15,3), Sensors.NORTH_STATION_N);
+	    sensors.put(asList(15,5), Sensors.NORTH_STATION_S);
+	    sensors.put(asList(15,11), Sensors.SOUTH_STATION_N);
+	    sensors.put(asList(15,13), Sensors.SOUTH_STATION_S);
 	    
-	    switches.put(Switches.EAST, asList(17,7));
-	    switches.put(Switches.MID, asList(15,9));
-	    switches.put(Switches.WEST, asList(4,9));
+	    switches.put(Switches.EAST,  asList(17,7));
+	    switches.put(Switches.MID,   asList(15,9));
+	    switches.put(Switches.WEST,  asList(4,9));
 	    switches.put(Switches.SOUTH, asList(3,11));
 	    
 	    semaphores.put(Semaphores.CROSSING, new Semaphore(1));
@@ -75,11 +74,6 @@ public class Lab1 {
 	    semaphores.put(Semaphores.N_STATION, new Semaphore(0));
 	    semaphores.put(Semaphores.S_STATION, new Semaphore(0));
 	    
-	    for (Map.Entry<Sensors, List<Integer>> sens: sensors.entrySet()) {
-	    	sensorPos.put(sens.getValue(), sens.getKey());
-	    }
-    
-      
 	    Train train1 = new Train(1,speed1,tsi, Sensors.NORTH_STATION_N);
 	    Train train2 = new Train(2,speed2,tsi, Sensors.SOUTH_STATION_N);
       
@@ -124,11 +118,6 @@ class Train extends Thread {
 	    private void claim(Semaphores semName) throws InterruptedException{
 	    	Semaphore sem = semaphores.get(semName);
 	    	sem.acquire();
-
-//	    	if (semName != Semaphores.CROSSING) {
-//				lastSemaphore = currentSemaphore;
-//				currentSemaphore = semName;
-//			}
 	    }
 
 		private void waitForClearance(Semaphores semName) throws CommandException, InterruptedException{
@@ -187,15 +176,9 @@ class Train extends Thread {
 	    }
 		
 		private void handleSensor(SensorEvent event) throws CommandException, InterruptedException {
-			Sensors name = sensorPos.get(asList(event.getXpos(), event.getYpos()));
-			System.out.println(semaphores.get(Semaphores.WEST_TRACK).availablePermits());
+			Sensors name = sensors.get(asList(event.getXpos(), event.getYpos()));
 			
 			if (event.getStatus() == SensorEvent.ACTIVE) {
-				if (id == 2) {
-					System.out.println("NEW sensor: " + name);
-					System.out.println("LAST sensor: " + lastSensor);
-				}
-				
 				switch (name) {
 				// cases for crossing
 					case CROSSING_W:
@@ -231,11 +214,9 @@ class Train extends Thread {
 					case EAST_W:
 						if (lastSensor == Sensors.CROSSING_E) {
 							if (!semaphoreIsAvailable(Semaphores.EAST_TRACK)) {
-								waitForClearance(Semaphores.EAST_TRACK); // but with switch ??
+								waitForClearance(Semaphores.EAST_TRACK); 
 							} else {
-								// changeSwitch(Switches.EAST, tsi.SWITCH_RIGHT); // may not be needed
 								claim(Semaphores.EAST_TRACK);
-								// maybe update speed
 							}
 						} else {
 							setClearance(Semaphores.EAST_TRACK);
@@ -248,23 +229,19 @@ class Train extends Thread {
 							} else {
 								changeSwitch(Switches.EAST, tsi.SWITCH_LEFT);
 								claim(Semaphores.EAST_TRACK);
-								// maybe update speed
 							}
 						} else {
 							setClearance(Semaphores.EAST_TRACK);
-							System.out.println("east clearance set!!!!!!!!!!!!!!!!!");
-							changeSwitch(Switches.EAST, tsi.SWITCH_RIGHT); // kanske inte behvs
+							changeSwitch(Switches.EAST, tsi.SWITCH_RIGHT); 
 						}
 						break;
 					case EAST_E:
 						if (lastSensor == Sensors.MID_E) {
 							if (!semaphoreIsAvailable(Semaphores.N_STATION)) {
 								changeSwitch(Switches.EAST, tsi.SWITCH_LEFT);
-								// maybe update speed
 							}
 							else {
 								claim(Semaphores.N_STATION);
-								// maybe update switch
 							}
 						} else if (lastSensor == Sensors.EAST_W){
 							setClearance(Semaphores.N_STATION); 
@@ -293,7 +270,7 @@ class Train extends Thread {
 						System.out.println("At mid west sensor");
 						if (lastSensor == Sensors.WEST_E) {
 							if (!semaphoreIsAvailable(Semaphores.EAST_TRACK)){
-								waitForClearance(Semaphores.EAST_TRACK); // but with switch ??
+								waitForClearance(Semaphores.EAST_TRACK);
 							} else {
 								claim(Semaphores.EAST_TRACK);
 							}
@@ -304,7 +281,7 @@ class Train extends Thread {
 					case MID_S:
 						if (lastSensor == Sensors.WEST_S) {
 							if (!semaphoreIsAvailable(Semaphores.EAST_TRACK)) {
-								waitForClearance(Semaphores.EAST_TRACK, Switches.MID, tsi.SWITCH_LEFT); // but with switch
+								waitForClearance(Semaphores.EAST_TRACK, Switches.MID, tsi.SWITCH_LEFT); 
 							} else {
 								changeSwitch(Switches.MID, tsi.SWITCH_LEFT);
 								claim(Semaphores.EAST_TRACK);
@@ -326,7 +303,6 @@ class Train extends Thread {
 						} else if (lastSensor == Sensors.WEST_E) {
 							setClearance(Semaphores.MID_TRACK); 
 						} else {
-							
 							changeSwitch(Switches.WEST, tsi.SWITCH_LEFT);
 						}
 						break;
@@ -344,11 +320,10 @@ class Train extends Thread {
 					case WEST_S:
 						if (lastSensor == Sensors.MID_S) {
 							if (!semaphoreIsAvailable(Semaphores.WEST_TRACK)) {
-								waitForClearance(Semaphores.WEST_TRACK, Switches.WEST, tsi.SWITCH_RIGHT); // but with switch
+								waitForClearance(Semaphores.WEST_TRACK, Switches.WEST, tsi.SWITCH_RIGHT); 
 							} else {
-								waitForClearance(Semaphores.WEST_TRACK, Switches.WEST, tsi.SWITCH_RIGHT);
-//								changeSwitch(Switches.WEST, tsi.SWITCH_RIGHT);
-//								claim(Semaphores.WEST_TRACK);
+								changeSwitch(Switches.WEST, tsi.SWITCH_RIGHT);
+								claim(Semaphores.WEST_TRACK);
 							}
 						} else {
 							changeSwitch(Switches.WEST, tsi.SWITCH_LEFT);
@@ -392,15 +367,12 @@ class Train extends Thread {
 						} else {
 							changeSwitch(Switches.SOUTH, tsi.SWITCH_LEFT);
 							setClearance(Semaphores.WEST_TRACK);
-							System.out.println("clearance set on west track ----------------------------------");
-							System.out.println(semaphores.get(Semaphores.WEST_TRACK).availablePermits());
 						}
 						break;
 					
 					// Stations
 					case NORTH_STATION_N:
 						if (lastSensor == Sensors.CROSSING_W) {
-							System.out.println("WAIT north station n");
 							waitAtStation();
 						}
 						break;
@@ -429,7 +401,6 @@ class Train extends Thread {
 		public void run() {
 			try {
 				setDefaultSwitches();
-				
 				tsi.setSpeed(id,speed);
 				
 				while(true) {
