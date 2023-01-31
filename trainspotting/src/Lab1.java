@@ -89,7 +89,7 @@ class Train extends Thread {
 		private TSimInterface tsi;
 		private Sensors lastSensor;
 		
-		private static int MAX_SPEED = 22;
+		private int MAX_SPEED = 22;
 		
 		public Train(int id, int speed, TSimInterface tsi, Sensors lastSensor) {
 			this.id = id;
