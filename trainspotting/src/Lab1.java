@@ -99,6 +99,11 @@ class Train extends Thread {
 			this.speed = getMaxSpeed(Math.abs(speed));
 		}
 		
+		/**
+		 * Sets the maximum speed that the program allows.
+		 * @param speed - the speed the user suggests
+		 * @return
+		 */
 		private int getMaxSpeed(int speed) {
 			
 			if (speed > MAX_SPEED) {
@@ -108,6 +113,10 @@ class Train extends Thread {
 			}
 		}
 		
+		/**
+		 * Method to release an occupied semaphore.
+		 * @param semName - the name of the semaphore.
+		 */
 	    private void setClearance(Semaphores semName) {
 	    	Semaphore sem = semaphores.get(semName);
 	    	if (sem.availablePermits() == 0 ) {
@@ -115,20 +124,38 @@ class Train extends Thread {
 			}
 	    }	
 	    
+	    /**
+	     * method to occcupy or acquire the given semaphore.
+	     * @param semName - the name of the semaphore
+	     * @throws InterruptedException
+	     */
 	    private void claim(Semaphores semName) throws InterruptedException{
 	    	Semaphore sem = semaphores.get(semName);
 	    	sem.acquire();
 	    }
 
+	    /**
+	     * Method for the train to stop and wait until the given semaphore(track) is
+	     * available and then go forward.
+	     * @param semName
+	     * @throws CommandException
+	     * @throws InterruptedException
+	     */
 		private void waitForClearance(Semaphores semName) throws CommandException, InterruptedException{
-		
 			tsi.setSpeed(id, 0);
 			claim(semName);
-			
 			tsi.setSpeed(id, speed);
-			
 		}
 		
+		/**
+		 * Method for the train to stop and wait until the given semaphore(track) is
+		 * available, then modify the switch, and then go forward.
+		 * @param semName - name of the semaphore.
+		 * @param s       - the switch that needs to be modified in order for the train to go onto the track.
+		 * @param sDir    - the switch direction needed.
+		 * @throws CommandException
+		 * @throws InterruptedException
+		 */
 		private void waitForClearance(Semaphores semName, Switches s, int sDir) throws CommandException, InterruptedException{
 			tsi.setSpeed(id, 0);
 			claim(semName);
@@ -137,10 +164,17 @@ class Train extends Thread {
 			tsi.setSpeed(id, speed);
 		}
 		
+		/**
+		 * Switches the direction of the train.
+		 * Used for when turning at the stations.
+		 */
 		private void switchDirection() {
 			this.speed *= -1;
 		}
 		
+		/**
+		 * Method for the train to stop, and wait at a station. 
+		 */
 		private void waitAtStation() {
 			System.out.println("waiting at station");
 			try {
@@ -157,17 +191,33 @@ class Train extends Thread {
 			
 		}
 		
+		/**
+		 * Checks if a given semaphore(track) is available.
+		 * @param semName - name of the semaphore to check.
+		 * @return
+		 */
 		private boolean semaphoreIsAvailable(Semaphores semName) {
 			Semaphore sem = semaphores.get(semName);
 			// boolean notBusy = sem.tryAcquire();
 			return sem.availablePermits() > 0;
 		}
 		
+		/**
+		 * Method for changing the direction of a switch.
+		 * @param s         - the name of the switch to modify.
+		 * @param direction - the new direction of the switch.
+		 * @throws CommandException
+		 */
 		private void changeSwitch(Switches s, int direction) throws CommandException{
 			List<Integer> pos = switches.get(s);
 			tsi.setSwitch(pos.get(0), pos.get(1), direction);
 		}
 		
+		/**
+		 * Changes east and mid switch to direct on the defaukt path,
+		 * which is the track that goes straight ahead.
+		 * @throws CommandException
+		 */
 		private void setDefaultSwitches() throws CommandException{
 	    	List<Integer> eastPos = switches.get(Switches.EAST);
 	    	List<Integer> midPos = switches.get(Switches.MID);
@@ -175,12 +225,21 @@ class Train extends Thread {
 	    	tsi.setSwitch(midPos.get(0), midPos.get(1), tsi.SWITCH_RIGHT);
 	    }
 		
+		/**
+		 * Handles all sensorevents that occur.
+		 * @param event - the event that occurs when a sensor is activated or inactivated.
+		 * @throws CommandException
+		 * @throws InterruptedException
+		 */
 		private void handleSensor(SensorEvent event) throws CommandException, InterruptedException {
 			Sensors name = sensors.get(asList(event.getXpos(), event.getYpos()));
 			
 			if (event.getStatus() == SensorEvent.ACTIVE) {
 				switch (name) {
-				// cases for crossing
+					
+					/**
+					 * Crossing
+					 */
 					case CROSSING_W:
 						if (lastSensor == Sensors.NORTH_STATION_N) {
 							waitForClearance(Semaphores.CROSSING);
@@ -210,7 +269,9 @@ class Train extends Thread {
 						}
 						break;
 
-					// East-top junction
+					/**
+					 * East-top junction
+					 */
 					case EAST_W:
 						if (lastSensor == Sensors.CROSSING_E) {
 							if (!semaphoreIsAvailable(Semaphores.EAST_TRACK)) {
@@ -251,7 +312,9 @@ class Train extends Thread {
 						break;
 						
 						
-					// Mid junction
+					/**
+					 * Mid-east junction
+					 */
 					case MID_E:
 						if (lastSensor == Sensors.EAST_E) {
 							if (!semaphoreIsAvailable(Semaphores.MID_TRACK)) {
@@ -292,7 +355,9 @@ class Train extends Thread {
 						}
 						break;
 						
-					// West junction
+					/**
+					 * West junction
+					 */
 					case WEST_W:
 						if (lastSensor == Sensors.SOUTH_W) {
 							if (!semaphoreIsAvailable(Semaphores.MID_TRACK)) {
@@ -331,7 +396,9 @@ class Train extends Thread {
 						}
 						break;
 						
-					// South junction
+					/**
+					 * South junction
+					 */
 					case SOUTH_W:
 						if (lastSensor == Sensors.WEST_W) {
 							if (!semaphoreIsAvailable(Semaphores.S_STATION)) {
@@ -359,7 +426,7 @@ class Train extends Thread {
 					case SOUTH_S:
 						if (lastSensor == Sensors.SOUTH_STATION_S) {
 							if (!semaphoreIsAvailable(Semaphores.WEST_TRACK)) {
-								waitForClearance(Semaphores.WEST_TRACK, Switches.SOUTH, tsi.SWITCH_RIGHT); // but with switch
+								waitForClearance(Semaphores.WEST_TRACK, Switches.SOUTH, tsi.SWITCH_RIGHT);
 							} else {
 								changeSwitch(Switches.SOUTH, tsi.SWITCH_RIGHT);
 								claim(Semaphores.WEST_TRACK);
@@ -370,7 +437,10 @@ class Train extends Thread {
 						}
 						break;
 					
-					// Stations
+					/**
+					 * Stations
+					 * When a train is coming into the stations, it has to wait.
+					 */
 					case NORTH_STATION_N:
 						if (lastSensor == Sensors.CROSSING_W) {
 							waitAtStation();
