@@ -37,15 +37,15 @@ public class Lab1 {
 	    TSimInterface tsi = TSimInterface.getInstance();
 	    
 	    sensors.put(asList(6,6), Sensors.CROSSING_W);
-	    sensors.put(asList(8,5), Sensors.CROSSING_N);
-	    sensors.put(asList(10,7), Sensors.CROSSING_E);
+	    sensors.put(asList(9,5), Sensors.CROSSING_N);
+	    sensors.put(asList(11,7), Sensors.CROSSING_E);
 	    sensors.put(asList(10,8), Sensors.CROSSING_S);
 	    
 	    sensors.put(asList(19,8), Sensors.EAST_E);
-	    sensors.put(asList(15,7), Sensors.EAST_W);
+	    sensors.put(asList(14,7), Sensors.EAST_W);
 	    sensors.put(asList(15,8), Sensors.EAST_S);
 	    
-	    sensors.put(asList(17,9), Sensors.MID_E);
+	    sensors.put(asList(18,9), Sensors.MID_E);
 	    sensors.put(asList(12,9), Sensors.MID_W);
 	    sensors.put(asList(13,10), Sensors.MID_S);
 	    
@@ -53,7 +53,7 @@ public class Lab1 {
 	    sensors.put(asList(1,9), Sensors.WEST_W);
 	    sensors.put(asList(6,10), Sensors.WEST_S);
 	    
-	    sensors.put(asList(5,11), Sensors.SOUTH_E);
+	    sensors.put(asList(6,11), Sensors.SOUTH_E);
 	    sensors.put(asList(1,10), Sensors.SOUTH_W);
 	    sensors.put(asList(4,13), Sensors.SOUTH_S);
 	    
@@ -74,12 +74,11 @@ public class Lab1 {
 	    semaphores.put(Semaphores.N_STATION, new Semaphore(0));
 	    semaphores.put(Semaphores.S_STATION, new Semaphore(0));
 	    
-	    Train train1 = new Train(1,speed1,tsi, Sensors.NORTH_STATION_N);
-	    Train train2 = new Train(2,speed2,tsi, Sensors.SOUTH_STATION_N);
+	    Train train1 = new Train(1,speed1, tsi, Sensors.NORTH_STATION_N);
+	    Train train2 = new Train(2,speed2, tsi, Sensors.SOUTH_STATION_N);
       
 	    train1.start();
 	    train2.start();
-	    
     }
 
 
@@ -90,7 +89,7 @@ class Train extends Thread {
 		private TSimInterface tsi;
 		private Sensors lastSensor;
 		
-		private static int MAX_SPEED = 20;
+		private static int MAX_SPEED = 22;
 		
 		public Train(int id, int speed, TSimInterface tsi, Sensors lastSensor) {
 			this.id = id;
@@ -105,7 +104,6 @@ class Train extends Thread {
 		 * @return
 		 */
 		private int getMaxSpeed(int speed) {
-			
 			if (speed > MAX_SPEED) {
 				return MAX_SPEED;
 			} else {
@@ -123,16 +121,6 @@ class Train extends Thread {
 	    		sem.release();
 			}
 	    }	
-	    
-	    /**
-	     * method to occcupy or acquire the given semaphore.
-	     * @param semName - the name of the semaphore
-	     * @throws InterruptedException
-	     */
-	    private void claim(Semaphores semName) throws InterruptedException{
-	    	Semaphore sem = semaphores.get(semName);
-	    	sem.acquire();
-	    }
 
 	    /**
 	     * Method for the train to stop and wait until the given semaphore(track) is
@@ -142,8 +130,9 @@ class Train extends Thread {
 	     * @throws InterruptedException
 	     */
 		private void waitForClearance(Semaphores semName) throws CommandException, InterruptedException{
+			Semaphore sem = semaphores.get(semName);
 			tsi.setSpeed(id, 0);
-			claim(semName);
+	    	sem.acquire();
 			tsi.setSpeed(id, speed);
 		}
 		
@@ -157,10 +146,10 @@ class Train extends Thread {
 		 * @throws InterruptedException
 		 */
 		private void waitForClearance(Semaphores semName, Switches s, int sDir) throws CommandException, InterruptedException{
+			Semaphore sem = semaphores.get(semName);
 			tsi.setSpeed(id, 0);
-			claim(semName);
+			sem.acquire();
 			changeSwitch(s, sDir);
-			
 			tsi.setSpeed(id, speed);
 		}
 		
@@ -175,31 +164,22 @@ class Train extends Thread {
 		/**
 		 * Method for the train to stop, and wait at a station. 
 		 */
-		private void waitAtStation() {
-			System.out.println("waiting at station");
-			try {
-				tsi.setSpeed(id, 0);
-				sleep(1000 + 2*Math.abs(speed));
-				switchDirection();
-				tsi.setSpeed(id, speed);
-			} catch (CommandException e) {
-				e.printStackTrace();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-			
-			
+		private void waitAtStation() throws CommandException, InterruptedException{
+			tsi.setSpeed(id, 0);
+			sleep(1000 + 2*Math.abs(speed));
+			switchDirection();
+			tsi.setSpeed(id, speed);
 		}
 		
 		/**
-		 * Checks if a given semaphore(track) is available.
+		 * Checks if a given semaphore(track) is available, and
+		 * occupies the semaphore if it is available.
 		 * @param semName - name of the semaphore to check.
 		 * @return
 		 */
 		private boolean semaphoreIsAvailable(Semaphores semName) {
 			Semaphore sem = semaphores.get(semName);
-			// boolean notBusy = sem.tryAcquire();
-			return sem.availablePermits() > 0;
+			return sem.tryAcquire();
 		}
 		
 		/**
@@ -276,9 +256,7 @@ class Train extends Thread {
 						if (lastSensor == Sensors.CROSSING_E) {
 							if (!semaphoreIsAvailable(Semaphores.EAST_TRACK)) {
 								waitForClearance(Semaphores.EAST_TRACK); 
-							} else {
-								claim(Semaphores.EAST_TRACK);
-							}
+							} 
 						} else {
 							setClearance(Semaphores.EAST_TRACK);
 						}
@@ -286,10 +264,9 @@ class Train extends Thread {
 					case EAST_S:
 						if (lastSensor == Sensors.CROSSING_S) {
 							if (!semaphoreIsAvailable(Semaphores.EAST_TRACK)) {
-								waitForClearance(Semaphores.EAST_TRACK, Switches.EAST, tsi.SWITCH_LEFT); // but with switch
+								waitForClearance(Semaphores.EAST_TRACK, Switches.EAST, tsi.SWITCH_LEFT);
 							} else {
 								changeSwitch(Switches.EAST, tsi.SWITCH_LEFT);
-								claim(Semaphores.EAST_TRACK);
 							}
 						} else {
 							setClearance(Semaphores.EAST_TRACK);
@@ -300,9 +277,6 @@ class Train extends Thread {
 						if (lastSensor == Sensors.MID_E) {
 							if (!semaphoreIsAvailable(Semaphores.N_STATION)) {
 								changeSwitch(Switches.EAST, tsi.SWITCH_LEFT);
-							}
-							else {
-								claim(Semaphores.N_STATION);
 							}
 						} else if (lastSensor == Sensors.EAST_W){
 							setClearance(Semaphores.N_STATION); 
@@ -319,10 +293,7 @@ class Train extends Thread {
 						if (lastSensor == Sensors.EAST_E) {
 							if (!semaphoreIsAvailable(Semaphores.MID_TRACK)) {
 								changeSwitch(Switches.MID, tsi.SWITCH_LEFT);
-								
-							} else {
-								claim(Semaphores.MID_TRACK);
-							}	
+							} 
 						} else if (lastSensor == Sensors.MID_W) {
 							setClearance(Semaphores.MID_TRACK);
 						}  else {
@@ -334,9 +305,7 @@ class Train extends Thread {
 						if (lastSensor == Sensors.WEST_E) {
 							if (!semaphoreIsAvailable(Semaphores.EAST_TRACK)){
 								waitForClearance(Semaphores.EAST_TRACK);
-							} else {
-								claim(Semaphores.EAST_TRACK);
-							}
+							} 
 						} else {
 							setClearance(Semaphores.EAST_TRACK);
 						}
@@ -347,7 +316,6 @@ class Train extends Thread {
 								waitForClearance(Semaphores.EAST_TRACK, Switches.MID, tsi.SWITCH_LEFT); 
 							} else {
 								changeSwitch(Switches.MID, tsi.SWITCH_LEFT);
-								claim(Semaphores.EAST_TRACK);
 							}
 						} else {
 							changeSwitch(Switches.MID, tsi.SWITCH_RIGHT);
@@ -362,9 +330,7 @@ class Train extends Thread {
 						if (lastSensor == Sensors.SOUTH_W) {
 							if (!semaphoreIsAvailable(Semaphores.MID_TRACK)) {
 								changeSwitch(Switches.WEST, tsi.SWITCH_RIGHT);
-							} else {
-								claim(Semaphores.MID_TRACK);
-							}
+							} 
 						} else if (lastSensor == Sensors.WEST_E) {
 							setClearance(Semaphores.MID_TRACK); 
 						} else {
@@ -375,9 +341,7 @@ class Train extends Thread {
 						if (lastSensor == Sensors.MID_W) {
 							if (!semaphoreIsAvailable(Semaphores.WEST_TRACK)) {
 								waitForClearance(Semaphores.WEST_TRACK); 
-							} else {
-								claim(Semaphores.WEST_TRACK);
-							}
+							} 
 						} else {
 							setClearance(Semaphores.WEST_TRACK); 
 						}
@@ -388,7 +352,6 @@ class Train extends Thread {
 								waitForClearance(Semaphores.WEST_TRACK, Switches.WEST, tsi.SWITCH_RIGHT); 
 							} else {
 								changeSwitch(Switches.WEST, tsi.SWITCH_RIGHT);
-								claim(Semaphores.WEST_TRACK);
 							}
 						} else {
 							changeSwitch(Switches.WEST, tsi.SWITCH_LEFT);
@@ -403,8 +366,6 @@ class Train extends Thread {
 						if (lastSensor == Sensors.WEST_W) {
 							if (!semaphoreIsAvailable(Semaphores.S_STATION)) {
 								changeSwitch(Switches.SOUTH, tsi.SWITCH_RIGHT);
-							} else {
-								claim(Semaphores.S_STATION);
 							}
 						} else if (lastSensor == Sensors.SOUTH_E){
 							setClearance(Semaphores.S_STATION);
@@ -416,9 +377,7 @@ class Train extends Thread {
 						if (lastSensor == Sensors.SOUTH_STATION_N) {
 							if (!semaphoreIsAvailable(Semaphores.WEST_TRACK)) {
 								waitForClearance(Semaphores.WEST_TRACK);
-							} else {
-								claim(Semaphores.WEST_TRACK);
-							}
+							} 
 						} else {
 							setClearance(Semaphores.WEST_TRACK);
 						}
@@ -429,7 +388,6 @@ class Train extends Thread {
 								waitForClearance(Semaphores.WEST_TRACK, Switches.SOUTH, tsi.SWITCH_RIGHT);
 							} else {
 								changeSwitch(Switches.SOUTH, tsi.SWITCH_RIGHT);
-								claim(Semaphores.WEST_TRACK);
 							}
 						} else {
 							changeSwitch(Switches.SOUTH, tsi.SWITCH_LEFT);
@@ -462,7 +420,6 @@ class Train extends Thread {
 						}
 						break;
 				}
-				
 				lastSensor = name;
 			}
 	    }
@@ -488,14 +445,5 @@ class Train extends Thread {
 			}
 			
 		}
-		
-		
-		
-	}
-  
-  
-  
-  
+	}  
 }
-
-
