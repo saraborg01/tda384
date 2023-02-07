@@ -1,5 +1,16 @@
 -module(server).
--export([start/1,stop/1]).
+-export([start/1,stop/1,handle/2]).
+
+-record(server_state, {
+    server,
+    channels
+}).
+
+new_server(ServerAtom) ->
+    #server_state{
+        server = ServerAtom,
+        channels = []
+    }.
 
 % Start a new server process with the given name
 % Do not change the signature of this function.
@@ -8,11 +19,22 @@ start(ServerAtom) ->
     % - Spawn a new process which waits for a message, handles it, then loops infinitely
     % - Register this process to ServerAtom
     % - Return the process ID
-    not_implemented.
+    % not_implemented.
+    spawn(genserver, start, [ServerAtom, new_server(ServerAtom), fun handle/2]).
+    % genserver:start(ServerAtom, #init_state{}, fun handle/2).
 
 % Stop the server process registered to the given name,
 % together with any other associated processes
 stop(ServerAtom) ->
     % TODO Implement function
     % Return ok
-    not_implemented.
+    % not_implemented.
+    % genserver:request(ServerAtom, kill_channels),
+    genserver:stop(ServerAtom).
+
+handle(State, Data) ->
+    io:format("Hello there").
+    % case Data of
+    %     {join, Channel} ->
+    %         io:format("You trynna join?")
+    % end.
