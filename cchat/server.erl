@@ -1,5 +1,5 @@
 -module(server).
--export([start/1,stop/1,handle/2]).
+-export([start/1,stop/1]).
 
 -record(server_state, {
     server,
@@ -20,7 +20,7 @@ start(ServerAtom) ->
     % - Register this process to ServerAtom
     % - Return the process ID
     % not_implemented.
-    spawn(genserver, start, [ServerAtom, new_server(ServerAtom), fun handle/2]).
+    spawn(genserver, start, [ServerAtom, new_server(ServerAtom), fun handle_server/2]).
     % genserver:start(ServerAtom, #init_state{}, fun handle/2).
 
 % Stop the server process registered to the given name,
@@ -32,9 +32,8 @@ stop(ServerAtom) ->
     % genserver:request(ServerAtom, kill_channels),
     genserver:stop(ServerAtom).
 
-handle(State, Data) ->
-    io:format("Hello there").
-    % case Data of
-    %     {join, Channel} ->
-    %         io:format("You trynna join?")
-    % end.
+handle_server(State, {join, Client, Channel}) ->
+    io:format("handle_server: join ~n");
+
+handle_server(State, {leave, Client, Channel}) ->
+    io:format("handle_server: leave ~n").
