@@ -30,9 +30,9 @@ start(ServerAtom) ->
     % - Register this process to ServerAtom
     % - Return the process ID
     % not_implemented.
-    St = new_server(ServerAtom),
-    io:format("Server: ~p, Channels: ~p", [St#server_state.server, St#server_state.channels]),
-    spawn(genserver, start, [ServerAtom, St, fun handle_server/2]).
+    % St = new_server(ServerAtom),
+    % io:format("Server: ~p, Channels: ~p", [St#server_state.server, St#server_state.channels]),
+    spawn(genserver, start, [ServerAtom, new_server(ServerAtom), fun handle_server/2]).
     % genserver:start(ServerAtom, #init_state{}, fun handle/2).
 
 % Stop the server process registered to the given name,
@@ -45,35 +45,29 @@ stop(ServerAtom) ->
     genserver:stop(ServerAtom).
 
 handle_server(State, {join, Client, Channel}) ->
-    io:format(Channel),
-    io:format(list_to_atom(Channel)),
-    case lists:member(Channel, State#server_state.channels) of
+    Channels = State#server_state.channels,
+    case lists:member(Channel, Channels) of
         true  -> 
-            % add member to existing channel
-            add_member(Channel, Client);
+            % request join to the channel
+            Result = genserver:request(list_to_atom(Channel), {join, Client}),
+            {reply, Result, State};
+
         false -> 
-            St = new_channel(Channel, Client),
-            io:format("Channel: ~p, Members: ~p", [St#channel_state.name, St#channel_state.members]),
-            
-            spawn(genserver, start, [list_to_atom(Channel), St, fun handle_channel/2]),
-            %% add channel to channels
-            io:format("channel created ~n"),
-            add_channel(State,Channel)
+            % spawns process for channel with Client as a member.
+            spawn(genserver, start, [list_to_atom(Channel), new_channel(Channel, Client), fun handle_channel/2]),
+            {reply, ok, State#server_state{channels = Channels ++ [Channel]}}
     end;
 
 handle_server(State, {leave, Client, Channel}) ->
     io:format("handle_server: leave ~n").
-
-% Adds channel to specified server
-add_channel(State, Channel) ->
-    C = State#server_state.channels,
-    State#server_state{channels = [Channel|C]},
-    io:format("channel added ~n").
 
 % Adds client to specified channel
 add_member(C_St, Client) ->
     M = C_St#channel_state.members,
     C_St#channel_state{members = [Client|M]}.
 
-handle_channel(C_St, Data) ->
-    io:format("Handle channel ~n").
+handle_channel(C_St, {join, Client}) ->
+    io:format("~p trying to join ~n", [Client]);
+
+handle_channel(C_St, {leave, Client}) ->
+    io:format("~p trying to leave ~n", [Client]).
