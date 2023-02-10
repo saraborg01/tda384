@@ -34,7 +34,7 @@ handle(St, {join, Channel}) ->
     % TODO: add check if server is active
     % Requests to join the specified channel in the server
     Result = genserver:request(St#client_st.server, {join, self(), Channel}),
-    {reply, Result, St} ;
+    {reply, Result, St};
 
 % Leave channel
 handle(St, {leave, Channel}) ->
