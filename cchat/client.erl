@@ -38,8 +38,7 @@ handle(St, {join, Channel}) ->
 
 % Leave channel
 handle(St, {leave, Channel}) ->
-    % TODO: Implement this function
-    % {reply, ok, St} ;
+    % Sends a request to the server to leave the given channel.
     Result = genserver:request(St#client_st.server, {leave, self(), Channel}),
     case Result of
         {'EXIT',_} -> {reply, {error, server_not_reached, "Server does not respond"}, St};
@@ -49,9 +48,9 @@ handle(St, {leave, Channel}) ->
 
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->
-    % TODO: Implement this function
-    % {reply, ok, St} ;
-    {reply, {error, not_implemented, "message sending not implemented"}, St} ;
+    % Sends a request to the channel to send a message.
+    Result = genserver:request(list_to_atom(Channel), {message_send, Msg, St#client_st.nick, self()}),
+    {reply, Result, St};
 
 % This case is only relevant for the distinction assignment!
 % Change nick (no check, local only)
