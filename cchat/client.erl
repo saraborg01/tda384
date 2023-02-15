@@ -28,20 +28,24 @@ initial_state(Nick, GUIAtom, ServerAtom) ->
 
 % Join channel
 handle(St, {join, Channel}) ->
-    
-    % {reply, ok, St} ;
-
-    % TODO: add check if server is active
     % Requests to join the specified channel in the server
-    Result = genserver:request(St#client_st.server, {join, self(), Channel}),
-    {reply, Result, St};
+    Result = (catch genserver:request(St#client_st.server, {join, self(), Channel})),
+    case Result of
+        {'EXIT',_} -> {reply, {error, server_not_reached, "Server does not respond"}, St};
+        joined     -> {reply, ok, St};
+        failed     -> {reply, {error, user_already_joined, "User already joined"}, St}
+    end;
 
 % Leave channel
 handle(St, {leave, Channel}) ->
     % TODO: Implement this function
     % {reply, ok, St} ;
     Result = genserver:request(St#client_st.server, {leave, self(), Channel}),
-    {reply, Result, St} ;
+    case Result of
+        {'EXIT',_} -> {reply, {error, server_not_reached, "Server does not respond"}, St};
+        success    -> {reply, ok, St};
+        failed     -> {reply, {error, user_not_joined, "User not in channel"}, St}
+    end;
 
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->

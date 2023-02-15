@@ -55,19 +55,31 @@ handle_server(State, {join, Client, Channel}) ->
         false -> 
             % spawns process for channel with Client as a member.
             spawn(genserver, start, [list_to_atom(Channel), new_channel(Channel, Client), fun handle_channel/2]),
-            {reply, ok, State#server_state{channels = Channels ++ [Channel]}}
+            {reply, joined, State#server_state{channels = Channels ++ [Channel]}}
     end;
 
 handle_server(State, {leave, Client, Channel}) ->
-    io:format("handle_server: leave ~n").
+    Channels = State#server_state.channels,
+    case lists:member(Channel, Channels) of
+        true -> 
+            Result = genserver:request(list_to_atom(Channel), {leave, Client}),
+            {reply, Result, State};
+        false ->
+            {reply, , State}
+    end.
 
-% Adds client to specified channel
-add_member(C_St, Client) ->
-    M = C_St#channel_state.members,
-    C_St#channel_state{members = [Client|M]}.
+
 
 handle_channel(C_St, {join, Client}) ->
-    io:format("~p trying to join ~n", [Client]);
+    Members = C_St#channel_state.members,
+    case lists:member(Client, Members) of
+        true  -> {reply, failed, C_St};
+        false -> {reply, joined, C_St#channel_state{members = Members ++ [Client]}}
+    end;
 
 handle_channel(C_St, {leave, Client}) ->
-    io:format("~p trying to leave ~n", [Client]).
+    Members = C_St#channel_state.members,
+    case lists:member(Client, Members) of
+        false -> {reply, failed, C_St};
+        true  -> {reply, success, C_St#channel_state{members = lists:delete(Client, Members)}} 
+    end.
