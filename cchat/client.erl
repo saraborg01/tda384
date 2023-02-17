@@ -29,20 +29,28 @@ initial_state(Nick, GUIAtom, ServerAtom) ->
 % Join channel
 handle(St, {join, Channel}) ->
     % TODO: Implement this function
-    % {reply, ok, St} ;
-    {reply, {error, not_implemented, "join not implemented"}, St} ;
-
+    Result = (catch genserver:request(St#client_st.server, {join, self(), Channel})),
+    case Result of
+        joined      -> {reply, ok, St};
+        error      -> {reply, {error, user_already_joined, "User already joined"}, St};
+        failed      -> {reply, {error, user_already_joined, "User already joined"}, St};
+        {'EXIT', _} -> {reply, {error, server_not_reached, "Server does not respond"}, St}
+    end;
 % Leave channel
 handle(St, {leave, Channel}) ->
     % TODO: Implement this function
-    % {reply, ok, St} ;
-    {reply, {error, not_implemented, "leave not implemented"}, St} ;
+    Result = genserver:request(St#client_st.server, {leave, self(), Channel}),
+    case Result of
+        {'EXIT',_} -> {reply, {error, server_not_reached, "Server does not respond"}, St};
+        success    -> {reply, ok, St};
+        failed     -> {reply, {error, user_not_joined, "User not in channel"}, St}
+    end;
 
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->
     % TODO: Implement this function
-    % {reply, ok, St} ;
-    {reply, {error, not_implemented, "message sending not implemented"}, St} ;
+    Result = genserver:request(list_to_atom(Channel), {message_send, Msg, St#client_st.nick, self()}),
+    {reply, Result, St} ;
 
 % This case is only relevant for the distinction assignment!
 % Change nick (no check, local only)
