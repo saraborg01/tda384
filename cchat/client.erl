@@ -28,33 +28,36 @@ initial_state(Nick, GUIAtom, ServerAtom) ->
 
 % Join channel
 handle(St, {join, Channel}) ->
-    % Requests to join the specified channel in the server
-    Result = (catch genserver:request(St#client_st.server, {join, self(), Channel})),
-    case Result of
-        {'EXIT',_} -> {reply, {error, server_not_reached, "Server does not respond"}, St};
-        joined     -> {reply, ok, St};
-        failed     -> {reply, {error, user_already_joined, "User already joined"}, St}
+    Server = St#client_st.server,
+
+    % Sends a join request to the server and catches all responses.
+    Result = (catch genserver:request(Server, {join, self(), Channel})),
+    case Result of 
+        {'EXIT',_}    -> {reply, {error, server_not_reached, "Server does not respond"}, St}; % when server has been stopped
+        timeout_error -> {reply, {error, server_not_reached, "Server does not respond"}, St}; % when the server has timed out / unresponsive
+        _Else         -> {reply, Result, St} % is either {reply, ok, _} or {reply, {error...} _}.
     end;
 
 % Leave channel
 handle(St, {leave, Channel}) ->
-    % Sends a request to the server to leave the given channel.
-    Result = genserver:request(St#client_st.server, {leave, self(), Channel}),
-    case Result of
-        {'EXIT',_} -> {reply, {error, server_not_reached, "Server does not respond"}, St};
-        success    -> {reply, ok, St};
-        failed     -> {reply, {error, user_not_joined, "User not in channel"}, St}
-    end;
+    % Sends a leave request to the channel's process 
+    Result = genserver:request(list_to_atom(Channel), {leave, self()}),
+    {reply, Result, St};
+
 
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->
-    % Sends a request to the channel to send a message.
-    Result = genserver:request(list_to_atom(Channel), {message_send, Msg, St#client_st.nick, self()}),
-    {reply, Result, St};
+    Result = (catch genserver:request(list_to_atom(Channel), {message_send, Msg, St#client_st.nick, self()})),
+    case Result of
+        {'EXIT', _} -> {reply, {error, server_not_reached, "Server does not respond"}, St};
+        _Else       -> {reply, Result, St}
+    end;
 
 % This case is only relevant for the distinction assignment!
 % Change nick (no check, local only)
 handle(St, {nick, NewNick}) ->
+    Server = St#client_st.server,
+    Result = (catch genserver:request(Server, {new_nick, NewNick, St#client_st.nick})),
     {reply, ok, St#client_st{nick = NewNick}} ;
 
 % ---------------------------------------------------------------------------

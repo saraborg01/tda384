@@ -3,7 +3,8 @@
 
 -record(server_state, {
     server,
-    channels
+    channels,
+    nicknames
 }).
 
 -record(channel_state, {
@@ -13,7 +14,8 @@
 new_server(ServerAtom) ->
     #server_state{
         server = ServerAtom,
-        channels = []
+        channels = [],
+        nicknames = []
     }.
 
 new_channel(Channel, MemberPid) -> 
@@ -25,23 +27,12 @@ new_channel(Channel, MemberPid) ->
 % Start a new server process with the given name
 % Do not change the signature of this function.
 start(ServerAtom) ->
-    % TODO Implement function
-    % - Spawn a new process which waits for a message, handles it, then loops infinitely
-    % - Register this process to ServerAtom
-    % - Return the process ID
-    % not_implemented.
-    % St = new_server(ServerAtom),
-    % io:format("Server: ~p, Channels: ~p", [St#server_state.server, St#server_state.channels]),
     spawn(genserver, start, [ServerAtom, new_server(ServerAtom), fun handle_server/2]).
-    % genserver:start(ServerAtom, #init_state{}, fun handle/2).
 
 % Stop the server process registered to the given name,
 % together with any other associated processes
 stop(ServerAtom) ->
-    % TODO Implement function
-    % Return ok
-    % not_implemented.
-    % genserver:request(ServerAtom, kill_channels),
+    genserver:request(ServerAtom, kill_channels),
     genserver:stop(ServerAtom).
 
 % handle_server/2 handles each kind of request sent to the server from Client
@@ -61,29 +52,28 @@ handle_server(State, {join, Client, Channel}) ->
         true  -> 
             % Channel already exists,
             % Sends request to the channel to join it.
-            Result = genserver:request(list_to_atom(Channel), {join, Client}),
+            Result = (catch genserver:request(list_to_atom(Channel), {join, Client})),
+            % Sends response that user successfully joined channel
             {reply, Result, State};
-
         false -> 
             % Initiates channel and spawns process for it.
             spawn(genserver, start, [list_to_atom(Channel), new_channel(Channel, Client), fun handle_channel/2]),
             % Sends response that user successfully joined channel
-            {reply, joined, State#server_state{channels = Channels ++ [Channel]}}
+            {reply, ok, State#server_state{channels = Channels ++ [Channel]}}
     end;
 
-% Handles all leave requests sent to server.
-handle_server(State, {leave, Client, Channel}) ->
-    Channels = State#server_state.channels,
-    % Checks if specified channel exists.
-    case lists:member(Channel, Channels) of
-        true -> 
-            % Sends request to channel Pid to leave the channel
-            Result = genserver:request(list_to_atom(Channel), {leave, Client}),
-            {reply, Result, State};
+handle_server(State, {new_nick, NewNick, OldNick}) ->
+    Nicks = State#server_state.nicknames,
+    case lists:member(NewNick, Nicks) of
+        true ->
+            {reply, {error, nick_taken, "Nick is already taken on the server"}, State};
         false ->
-            % Sends response that process failed since the channel didn't exist.
-            {reply, failed, State}
-    end.
+            {reply, ok, State#server_state{nicknames = [NewNick | lists:delete(OldNick, Nicks)]}}
+    end;
+
+handle_server(State, kill_channels) ->
+    lists:foreach(fun(Ch) -> genserver:stop(list_to_atom(Ch)) end, State#server_state.channels),
+    {reply, ok, State#server_state{channels = []}}.
 
 % handle_channel/2 handles each kind of request sent to a channels, either from server or a client.
 % Parameters:
@@ -98,10 +88,10 @@ handle_channel(C_St, {join, Client}) ->
     Members = C_St#channel_state.members,
     % Checks if the user is already a member.
     case lists:member(Client, Members) of
-        % is a member -> fail
-        true  -> {reply, failed, C_St};
-        % not a member -> add them to the channel
-        false -> {reply, joined, C_St#channel_state{members = Members ++ [Client]}}
+        true  -> 
+            {reply, {error, user_already_joined, "User already joined"}, C_St};
+        false -> 
+            {reply, ok, C_St#channel_state{members = Members ++ [Client]}}
     end;
 
 % Handles all leave requests sent to channel
@@ -110,28 +100,23 @@ handle_channel(C_St, {leave, Client}) ->
     % Checks if the user is a member.
     case lists:member(Client, Members) of
         % not a member -> fail
-        false -> {reply, failed, C_St};
+        false -> {reply, {error, user_not_joined, "User not in channel"}, C_St};
         % is a member -> remove them from the channel
-        true  -> {reply, success, C_St#channel_state{members = lists:delete(Client, Members)}} 
+        true  -> {reply, ok, C_St#channel_state{members = lists:delete(Client, Members)}} 
     end;
 
 % Handles all message requests sent to channel
-handle_channel(C_St, {message_send, Msg, Nick, Client}) ->
+handle_channel(C_St, {message_send, Msg, Nick, Sender}) ->
     Members = C_St#channel_state.members,
     Channel = C_St#channel_state.name,
     % Checks if user is a member of the channel
-    case lists:member(Client, Members) of
+    case lists:member(Sender, Members) of
         false ->
             {reply, {error, user_not_joined, "User is not in the channel."}, C_St};
         true  ->
-            % Remove user from list of recipuents
-            % Don't want to send a message to themselves.
-            Recipients = lists:delete(Client, Members),
-            % Create a function that sends a message_receive request to a client.
-            Fun = fun(P) ->
-                    spawn(genserver, request, [P, {message_receive, Channel, Nick, Msg}])
-                end,
-            % Sends the request to all recipients.
-            lists:foreach(Fun, Recipients),
+            % spawns a request for each member (except the sender) to receive the message
+            [spawn(genserver, request, [Recipient, {message_receive, Channel, Nick, Msg}])
+                || Recipient <- Members, Recipient =/= Sender],
+            
             {reply, ok, C_St}
     end.    
