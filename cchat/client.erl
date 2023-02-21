@@ -28,26 +28,38 @@ initial_state(Nick, GUIAtom, ServerAtom) ->
 
 % Join channel
 handle(St, {join, Channel}) ->
-    % TODO: Implement this function
-    % {reply, ok, St} ;
-    {reply, {error, not_implemented, "join not implemented"}, St} ;
+    Server = St#client_st.server,
+
+    % Sends a join request to the server and catches all responses.
+    Result = (catch genserver:request(Server, {join, self(), Channel})),
+    case Result of 
+        {'EXIT',_}    -> {reply, {error, server_not_reached, "Server does not respond"}, St}; % when server has been stopped
+        timeout_error -> {reply, {error, server_not_reached, "Server does not respond"}, St}; % when the server has timed out / unresponsive
+        _Else         -> {reply, Result, St} % is either {reply, ok, _} or {reply, {error...} _}.
+    end;
 
 % Leave channel
 handle(St, {leave, Channel}) ->
-    % TODO: Implement this function
-    % {reply, ok, St} ;
-    {reply, {error, not_implemented, "leave not implemented"}, St} ;
+    % Sends a leave request to the channel's process 
+    Result = genserver:request(list_to_atom(Channel), {leave, self()}),
+    {reply, Result, St};
+
 
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->
-    % TODO: Implement this function
-    % {reply, ok, St} ;
-    {reply, {error, not_implemented, "message sending not implemented"}, St} ;
+    % Sends a message_send request to the channel's process, along with the message, nick of the sender, and the sender itself
+    Result = (catch genserver:request(list_to_atom(Channel), {message_send, Msg, St#client_st.nick, self()})),
+    case Result of
+        % Server has been shut down/exited, and the channel therefore doesn't exist
+        {'EXIT', _} -> {reply, {error, server_not_reached, "Server does not respond"}, St}; 
+        % Either ok or an error that has been caught in server
+        _Else       -> {reply, Result, St}
+    end;
 
 % This case is only relevant for the distinction assignment!
 % Change nick (no check, local only)
 handle(St, {nick, NewNick}) ->
-    {reply, ok, St#client_st{nick = NewNick}} ;
+    {reply, ok, St#client_st{nick = NewNick}} ; 
 
 % ---------------------------------------------------------------------------
 % The cases below do not need to be changed...
