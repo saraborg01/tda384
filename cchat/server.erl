@@ -62,16 +62,9 @@ handle_server(State, {join, Client, Channel}) ->
             {reply, ok, State#server_state{channels = Channels ++ [Channel]}}
     end;
 
-handle_server(State, {new_nick, NewNick, OldNick}) ->
-    Nicks = State#server_state.nicknames,
-    case lists:member(NewNick, Nicks) of
-        true ->
-            {reply, {error, nick_taken, "Nick is already taken on the server"}, State};
-        false ->
-            {reply, ok, State#server_state{nicknames = [NewNick | lists:delete(OldNick, Nicks)]}}
-    end;
-
+% Handles request to kill all channels (sent upon shutdown)
 handle_server(State, kill_channels) ->
+    % Stops all channels' processes
     lists:foreach(fun(Ch) -> genserver:stop(list_to_atom(Ch)) end, State#server_state.channels),
     {reply, ok, State#server_state{channels = []}}.
 

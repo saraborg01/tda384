@@ -47,18 +47,19 @@ handle(St, {leave, Channel}) ->
 
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->
+    % Sends a message_send request to the channel's process, along with the message, nick of the sender, and the sender itself
     Result = (catch genserver:request(list_to_atom(Channel), {message_send, Msg, St#client_st.nick, self()})),
     case Result of
-        {'EXIT', _} -> {reply, {error, server_not_reached, "Server does not respond"}, St};
+        % Server has been shut down/exited, and the channel therefore doesn't exist
+        {'EXIT', _} -> {reply, {error, server_not_reached, "Server does not respond"}, St}; 
+        % Either ok or an error that has been caught in server
         _Else       -> {reply, Result, St}
     end;
 
 % This case is only relevant for the distinction assignment!
 % Change nick (no check, local only)
 handle(St, {nick, NewNick}) ->
-    Server = St#client_st.server,
-    Result = (catch genserver:request(Server, {new_nick, NewNick, St#client_st.nick})),
-    {reply, ok, St#client_st{nick = NewNick}} ;
+    {reply, ok, St#client_st{nick = NewNick}} ; 
 
 % ---------------------------------------------------------------------------
 % The cases below do not need to be changed...
