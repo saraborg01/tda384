@@ -1,0 +1,35 @@
+
+Variables/States: 
+    - Visited:  We figured that the visited stack needs to be Shared
+                between all threads in order to keep track of all nodes
+                that have been visited. 
+    - finished: A thread-safe boolean that says if the goal has been found
+                It is shared since once the goal has been found, we want
+                to terminate all ForkJoinSolvers.
+
+    - Frontier: is not shared since one solver only needs to know what is ahead of 
+                of them and not the others, e.g. where they (and only they) can go.
+
+    - Predecessor: is also not shared since, we want to look at the path that
+                    one solver takes along with its children only.
+    
+    - childSolvers: Just a list (not shared) of the ForkJoinSolver's 
+                    all sub solvers.
+    
+    - staticMaze: static reference to the maze (shared), mainly to avoid 
+                  possible conflicts.
+
+
+We decided to ignore forkAfter and only fork new solvers when 
+presented with more than one possible path. This means that it forks
+at all crossings, minimizing time and resources to find the goal.
+
+When a goal has been found it only returns the path taken by that 
+specific solver, which may not necessarily have taken whole path.
+So, in joinChildren(), which is called when a solver signals that 
+a goal has been found or they've reached a dead end, it goes through
+all child solvers to see if any of them had ound the goal.
+
+If they had found the goal, we build together the partial
+paths to get the complete one. This leads to a path from
+the very beginning to the definite goal.
